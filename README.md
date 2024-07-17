@@ -7,15 +7,12 @@
 🧪 Working in Progress
 </pre>
 
+> I want to continue developing it, but the fact is that according to Apple's policy, Network Extension and Personal VPN permissions cannot be enabled through a **free developer account**. Maybe I won't update it until I get a paid developer account.
+
 ## Usage
 
 ```swift
 import MihomoKit
-
-// Function call
-MihomoFunc()
-// ex: 
-// Swift: MihomoHello() ==> Go: func hello() {}
 ```
 
 ## Author
