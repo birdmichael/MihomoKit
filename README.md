@@ -7,6 +7,17 @@
 🧪 Working in Progress
 </pre>
 
+## Usage
+
+```swift
+import MihomoKit
+
+// Function call
+MihomoFunc()
+// ex: 
+// Swift: MihomoHello() ==> Go: func hello() {}
+```
+
 ## Author
 
 MihomoKit © MihomoX, Released under MIT. Created on Jul 17, 2024
