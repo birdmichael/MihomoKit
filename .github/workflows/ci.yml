@@ -2,7 +2,12 @@ name: MihomoKit CI
 
 on:
   push:
+    tags:
+      - 'v*'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -14,12 +19,13 @@ jobs:
       - name: Set up golang environment
         uses: actions/setup-go@v5
         with:
-          go-version: ^1.22
+          go-version: '1.24.7'
       
-      - name: Set up gomobile
+      - name: Install gomobile and gobind
         run: |
           go install golang.org/x/mobile/cmd/gomobile@latest
-          export PATH=$PATH:$(go env GOPATH)/bin
+          go install golang.org/x/mobile/cmd/gobind@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
           gomobile init
         
       - name: Build MihomoKit.xcframework
@@ -31,9 +37,95 @@ jobs:
         run: |
           zip -r MihomoKit.xcframework.zip target/MihomoKit.xcframework
 
-      - name: Upload to Artifact
+      - name: Upload artifact (CI only)
+        if: "!startsWith(github.ref, 'refs/tags/')"
         uses: actions/upload-artifact@v4
         with:
           name: MihomoKit.xcframework
           path: MihomoKit.xcframework.zip
-        
+
+      - name: Rename with tag
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          mv MihomoKit.xcframework.zip "MihomoKit-${{ github.ref_name }}.xcframework.zip"
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: MihomoKit-${{ github.ref_name }}.xcframework.zip
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          body: |
+            ## MihomoKit ${{ github.ref_name }}
+            
+            基于 mihomo v1.19.13 构建的 iOS/iPadOS XCFramework
+            
+            ### 下载
+            - [MihomoKit-${{ github.ref_name }}.xcframework.zip](https://github.com/birdmichael/MihomoKit/releases/download/${{ github.ref_name }}/MihomoKit-${{ github.ref_name }}.xcframework.zip)
+
+      - name: Remove source code assets
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # 获取 release ID
+          RELEASE_ID=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ github.ref_name }}" | \
+            jq -r '.id')
+          
+          # 获取并删除源代码资产
+          curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${RELEASE_ID}/assets" | \
+            jq -r '.[] | select(.name | test("^Source code")) | .id' | \
+            xargs -I {} curl -X DELETE -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/assets/{}"
+
+      - name: Calculate XCFramework SHA256
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # 计算本地 xcframework zip 的 SHA256
+          CHECKSUM=$(shasum -a 256 "MihomoKit-${{ github.ref_name }}.xcframework.zip" | cut -d' ' -f1)
+          echo "XCFRAMEWORK_CHECKSUM=$CHECKSUM" >> $GITHUB_ENV
+          echo "Calculated checksum: $CHECKSUM"
+
+      - name: Update SPM Package
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          # 等待 Release 完全就绪
+          sleep 10
+          
+          # 切换到 main 分支
+          git fetch origin main
+          git checkout main
+          git pull origin main
+          
+          # 手动更新 Package.swift，使用本地计算的 checksum
+          RELEASE_URL="https://github.com/birdmichael/MihomoKit/releases/download/${{ github.ref_name }}/MihomoKit-${{ github.ref_name }}.xcframework.zip"
+          
+          # 更新 Package.swift
+          sed -i '' "s|url: \"https://github\.com/birdmichael/MihomoKit/releases/download/[^\"]*\.xcframework\.zip\"|url: \"$RELEASE_URL\"|g" Package.swift
+          sed -i '' "s|checksum: \"[^\"]*\"|checksum: \"$XCFRAMEWORK_CHECKSUM\"|g" Package.swift
+          
+          echo "Updated Package.swift:"
+          cat Package.swift
+          
+          # 检查是否有变更
+          if git diff --quiet Package.swift; then
+            echo "No changes to Package.swift"
+            exit 0
+          fi
+          
+          # 提交并推送更新
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add Package.swift
+          git commit -m "chore: update SPM Package to ${{ github.ref_name }}"
+          git push origin main
+          
+          # 创建不带 v 前缀的语义版本 tag 用于 SPM
+          SEMANTIC_VERSION="${{ github.ref_name }}"
+          SEMANTIC_VERSION="${SEMANTIC_VERSION#v}"  # 移除 v 前缀
+          echo "Creating semantic version tag: $SEMANTIC_VERSION"
+          git tag "$SEMANTIC_VERSION"
+          git push origin "$SEMANTIC_VERSION"
