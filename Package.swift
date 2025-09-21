@@ -15,8 +15,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "MihomoKit",
-            url: "https://github.com/birdmichael/MihomoKit/releases/download/v1.19.13/MihomoKit-v1.19.13.xcframework.zip",
-            checksum: "8f71c304a350d67dd61553cc67059795f20d6610de38687a2b8a9a0915e42e89"
+            url: "https://github.com/birdmichael/MihomoKit/releases/download/v2.0/MihomoKit-v2.0.xcframework.zip",
+            checksum: "564f892234b442b1f192dd62f50512c49e6f942788b35fdb8e7e2e94aa5d2d8c"
         ),
     ]
 )
