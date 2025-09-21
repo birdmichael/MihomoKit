@@ -1,11 +1,10 @@
 module MihomoKit
 
-go 1.24.7
+go 1.24.0
 
-require (
-	github.com/metacubex/mihomo v1.19.13
-	golang.org/x/mobile v0.0.0-20250911085028-6912353760cf
-)
+toolchain go1.24.7
+
+require github.com/metacubex/mihomo v1.19.13
 
 require (
 	github.com/RyuaNerin/go-krypto v1.3.0 // indirect
@@ -100,6 +99,7 @@ require (
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
 	golang.org/x/crypto v0.42.0 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
+	golang.org/x/mobile v0.0.0-20250911085028-6912353760cf // indirect
 	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/net v0.44.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
